@@ -1,0 +1,165 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  fullName     String
+  phone        String?
+  role         String   @default("CUSTOMER")
+  isVerified   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  totalOrders  Int      @default(0)
+  passwordHash String?
+
+  // Relations
+  orders              Order[]
+  sentMessages        Message[] @relation("SentMessages")
+  receivedMessages    Message[] @relation("ReceivedMessages")
+  verificationRequest VerificationRequest?
+
+  @@map("users")
+}
+
+model Order {
+  id            String   @id @default(cuid())
+  userId        String
+  productUrl    String
+  productName   String
+  quantity      Int
+  variation     String?
+  specifications String?
+  notes         String?
+  screenshotUrl String?
+  status        String   @default("REQUESTED")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages     Message[]
+  statusHistory OrderStatusHistory[]
+
+  @@map("orders")
+}
+
+model OrderStatusHistory {
+  id        String   @id @default(cuid())
+  orderId   String
+  status    String
+  timestamp DateTime @default(now())
+
+  // Relations
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_status_history")
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  orderId        String
+  senderId       String
+  receiverId     String
+  senderFullName String
+  text           String?
+  imageUrl       String?
+  docUrl         String?
+  videoUrl       String?
+  timestamp      DateTime @default(now())
+
+  // Relations
+  order    Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sender   User  @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User  @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+model VerificationRequest {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  fullName    String
+  phone       String
+  govIdUrl    String
+  selfieUrl   String
+  status      String   @default("PENDING")
+  submittedAt DateTime @default(now())
+  reviewedAt  DateTime?
+  reviewedBy  String?
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("verification_requests")
+}
+
+model SiteContent {
+  id                    String   @id @default("site_content")
+  aboutUsText           String
+  aboutUsMediaUrl       String?
+  aboutUsMediaType      String?
+  terms                 String
+  privacy               String
+  socialFacebook        String
+  socialTwitter         String
+  socialInstagram       String
+  announcementMessage   String
+  announcementActive    Boolean  @default(false)
+  heroDisplayMode       String   @default("slideshow")
+  updatedAt             DateTime @updatedAt
+
+  // Relations
+  companies Company[]
+  heroMedia HeroMedia[]
+  advertisements Advertisement[]
+
+  @@map("site_content")
+}
+
+model Company {
+  id            String   @id @default(cuid())
+  name          String
+  logoUrl       String
+  websiteUrl    String
+  siteContentId String   @default("site_content")
+
+  // Relations
+  siteContent SiteContent @relation(fields: [siteContentId], references: [id], onDelete: Cascade)
+
+  @@map("companies")
+}
+
+model HeroMedia {
+  id            String   @id @default(cuid())
+  type          String
+  url           String
+  siteContentId String   @default("site_content")
+
+  // Relations
+  siteContent SiteContent @relation(fields: [siteContentId], references: [id], onDelete: Cascade)
+
+  @@map("hero_media")
+}
+
+model Advertisement {
+  id            String   @id @default(cuid())
+  title         String
+  imageUrl      String
+  linkUrl       String?
+  isActive      Boolean  @default(true)
+  siteContentId String   @default("site_content")
+
+  // Relations
+  siteContent SiteContent @relation(fields: [siteContentId], references: [id], onDelete: Cascade)
+
+  @@map("advertisements")
+}
